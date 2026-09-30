@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Admin User View | Crestmont Digital Assets</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script src="script.js"></script>
+
+</head>
+
+
+<body class="dashboard-body">
+
+    <header class="dashboard-header">
+
+        <div class="dashboard-brand">
+
+            <span class="brand-mark">C</span>
+
+            <div>
+                <strong>Crestmont</strong>
+                <span>Digital Assets</span>
+            </div>
+
+        </div>
+
+
+        <div class="dashboard-header-actions">
+
+            <span class="admin-badge">
+                ADMIN VIEW
+            </span>
+
+            <a
+                href="admin.html"
+                class="dashboard-nav-link"
+            >
+                Back to Admin
+            </a>
+
+        </div>
+
+    </header>
+
+
+    <main class="dashboard-main">
+
+        <div class="dashboard-page-heading">
+
+            <span class="eyebrow">
+                ADMIN USER VIEW
+            </span>
+
+            <h1 id="viewUserName">
+                Loading user...
+            </h1>
+
+            <p id="viewUserEmail">
+                Loading account information...
+            </p>
+
+            <p>
+                This is an administrative support view.
+                You remain signed in as the administrator.
+            </p>
+
+        </div>
+
+
+        <section class="dashboard-overview-grid">
+
+            <article class="dashboard-stat-card">
+
+                <span class="dashboard-stat-label">
+                    Available Balance
+                </span>
+
+                <strong
+                    class="dashboard-stat-value"
+                    id="viewAvailableBalance"
+                >
+                    $0.00
+                </strong>
+
+            </article>
+
+
+            <article class="dashboard-stat-card">
+
+                <span class="dashboard-stat-label">
+                    Total Invested
+                </span>
+
+                <strong
+                    class="dashboard-stat-value"
+                    id="viewTotalInvested"
+                >
+                    $0.00
+                </strong>
+
+            </article>
+
+
+            <article class="dashboard-stat-card">
+
+                <span class="dashboard-stat-label">
+                    Portfolio Value
+                </span>
+
+                <strong
+                    class="dashboard-stat-value"
+                    id="viewPortfolioValue"
+                >
+                    $0.00
+                </strong>
+
+            </article>
+
+        </section>
+
+
+        <section class="settings-card">
+
+            <div class="settings-card-header">
+
+                <div>
+
+                    <span class="eyebrow">
+                        ACCOUNT
+                    </span>
+
+                    <h2>
+                        User Information
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+            <div class="empty-dashboard-card">
+
+                <strong id="viewUserCountry">
+                    Country
+                </strong>
+
+                <p id="viewUserPhone">
+                    Phone information
+                </p>
+
+                <p id="viewUserRole">
+                    Role
+                </p>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <script>
+
+        (async function () {
+
+const { data: adminUserData, error: adminUserError } =
+    await supabaseClient.auth.getUser();
+
+if (
+    adminUserError ||
+    !adminUserData.user
+) {
+    window.location.href = "signin.html";
+    return;
+}
+
+const { data: adminProfile, error: adminProfileError } =
+    await supabaseClient
+        .from("profiles")
+        .select("role")
+        .eq("id", adminUserData.user.id)
+        .single();
+
+if (
+    adminProfileError ||
+    !adminProfile ||
+    adminProfile.role !== "admin"
+) {
+    window.location.href = "dashboard.html";
+    return;
+}
+
+            const params =
+                new URLSearchParams(
+                    window.location.search
+                );
+
+            const targetUserId =
+                params.get("user");
+
+            if (!targetUserId) {
+
+                document.getElementById(
+                    "viewUserName"
+                ).textContent =
+                    "User not specified";
+
+                return;
+            }
+
+
+            const {
+                data: sessionData,
+                error: sessionError
+            } =
+                await supabaseClient.auth.getSession();
+
+
+            if (
+                sessionError ||
+                !sessionData.session
+            ) {
+
+                window.location.href =
+                    "signin.html";
+
+                return;
+            }
+
+
+            try {
+
+                const {
+                    data,
+                    error
+                } =
+                    await supabaseClient.rpc(
+                        "admin_view_user",
+                        {
+                            p_target_user_id:
+                                targetUserId
+                        }
+                    );
+
+
+                if (error) {
+
+                    console.error(
+                        "Admin user view error:",
+                        error
+                    );
+
+                    document.getElementById(
+                        "viewUserName"
+                    ).textContent =
+                        "Unable to load user";
+
+                    return;
+                }
+
+
+                const profile =
+                    data.profile || {};
+
+                const balance =
+                    data.balance || {};
+
+
+                const fullName =
+                    [
+                        profile.first_name,
+                        profile.last_name
+                    ]
+                    .filter(Boolean)
+                    .join(" ") ||
+                    "Unnamed User";
+
+
+                document.getElementById(
+                    "viewUserName"
+                ).textContent =
+                    fullName;
+
+
+                document.getElementById(
+                    "viewUserEmail"
+                ).textContent =
+                    profile.email || "";
+
+
+                document.getElementById(
+                    "viewAvailableBalance"
+                ).textContent =
+                    "$" +
+                    Number(
+                        balance.available_balance || 0
+                    ).toFixed(2);
+
+
+                document.getElementById(
+                    "viewTotalInvested"
+                ).textContent =
+                    "$" +
+                    Number(
+                        balance.total_invested || 0
+                    ).toFixed(2);
+
+
+                document.getElementById(
+                    "viewPortfolioValue"
+                ).textContent =
+                    "$" +
+                    Number(
+                        balance.portfolio_value || 0
+                    ).toFixed(2);
+
+
+                document.getElementById(
+                    "viewUserCountry"
+                ).textContent =
+                    "Country: " +
+                    (profile.country || "Not provided");
+
+
+                document.getElementById(
+                    "viewUserPhone"
+                ).textContent =
+                    "Phone: " +
+                    (profile.phone || "Not provided");
+
+
+                document.getElementById(
+                    "viewUserRole"
+                ).textContent =
+                    "Role: " +
+                    (profile.role || "user");
+
+
+            } catch (error) {
+
+                console.error(
+                    "Admin user view error:",
+                    error
+                );
+
+            }
+
+        })();
+
+    </script>
+
+</body>
+
+</html>
